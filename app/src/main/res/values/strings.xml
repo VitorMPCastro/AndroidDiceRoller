@@ -23,4 +23,9 @@
         item
     </string>
     <string name="title_activity_main">MainActivity</string>
+    <string name="title_activity_dice_roller">DiceRollerActivity</string>
+    <string name="go_to_dice_roller_button_text">Go</string>
+    <string name="title_activity_dice_roller_app">DiceRollerApp</string>
+    <string name="roll_button_text">Roll</string>
+    <string name="rolling_button_text">Rolling...</string>
 </resources>
