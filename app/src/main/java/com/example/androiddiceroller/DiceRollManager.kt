@@ -20,7 +20,7 @@ class DiceRollManager {
         Die(100, "d100")
     )
 
-    private var _selectedDie: MutableStateFlow<Die> = MutableStateFlow(standardDiceTypes.first { it.sides == 6 }) // Default to d6
+    private val _selectedDie = MutableStateFlow(standardDiceTypes.find { it.acronym == "d6" } ?: standardDiceTypes.first())
     val selectedDie: StateFlow<Die> = _selectedDie.asStateFlow()
 
     fun selectDie(die: Die) {

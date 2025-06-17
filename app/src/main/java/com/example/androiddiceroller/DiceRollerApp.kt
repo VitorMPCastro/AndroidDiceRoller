@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -27,14 +28,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp // For text size
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import com.example.androiddiceroller.ui.theme.AndroidDiceRollerTheme // Ensure this is your correct theme
 import com.google.firebase.Firebase
 import com.google.firebase.database.DataSnapshot
@@ -42,9 +43,9 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
-import kotlinx.coroutines.delay // Import for delay
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch // Import for launch
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,7 +67,7 @@ class DiceRollerApp : ComponentActivity() {
     }
 }
 
-class DiceViewModel(private val diceRollManager: DiceRollManager = DiceRollManager()) : androidx.lifecycle.ViewModel() {
+class DiceViewModel(private val diceRollManager: DiceRollManager = DiceRollManager()) : ViewModel() {
     val availableDice: List<Die> = diceRollManager.standardDiceTypes
     val selectedDie: StateFlow<Die> = diceRollManager.selectedDie
 
@@ -85,11 +86,14 @@ data class DiceRollData(
     val dieType: String = "d6",
     val timestamp: Long = System.currentTimeMillis()
 ) {
-    constructor() : this(null, 0, "d6", 0)
+    constructor() : this(null, 0, "", 0)
 }
 
 @Composable
-fun DiceRollerScreen(modifier: Modifier = Modifier) {
+fun DiceRollerScreen(
+    modifier: Modifier = Modifier,
+    diceViewModel: DiceViewModel = remember { DiceViewModel() }
+) {
     // State to hold the current displayed dice value
     var displayedRoll by remember { mutableStateOf(1) }
     // State to manage if the dice is currently "rolling" (animating)
@@ -97,6 +101,9 @@ fun DiceRollerScreen(modifier: Modifier = Modifier) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val diceRollsRef: DatabaseReference = Firebase.database.reference.child("diceRolls")
+    val availableDice = diceViewModel.availableDice
+    Log.d("DiceRollerScreen", "Available dice: $availableDice")
+    val selectedDie by diceViewModel.selectedDie.collectAsState()
 
     var rollHistory by remember { mutableStateOf<List<DiceRollData>>(emptyList()) }
 
@@ -151,6 +158,35 @@ fun DiceRollerScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.weight(0.5f))
 
         Text(
+            text = stringResource(R.string.select_die_label), // e.g., "Select Die:"
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp), // Increased padding after selector
+            horizontalArrangement = Arrangement.Center, // Center the row of buttons
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Consider using FlowRow if you have many dice and want them to wrap
+            // e.g., androidx.compose.foundation.layout.FlowRow
+            availableDice.forEach { die ->
+                Button(
+                    onClick = { diceViewModel.selectDie(die) },
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (die == selectedDie) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (die == selectedDie) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(text = die.acronym)
+                }
+            }
+        }
+
+        Text(
             text = displayedRoll.toString(),
             fontSize = 100.sp,
             modifier = Modifier.padding(bottom = 24.dp)
@@ -161,7 +197,7 @@ fun DiceRollerScreen(modifier: Modifier = Modifier) {
                 if (!isRolling) { // Prevent multiple clicks while rolling
                     coroutineScope.launch {
                         isRolling = true
-                        val actualRoll = (1..6).random() // Determine the actual result first
+                        val actualRoll = diceViewModel.rollCurrentDie()
 
                         // Animation phase: quickly change numbers
                         val animationDurationMillis = 500L // Total duration of "shuffling"
@@ -169,7 +205,7 @@ fun DiceRollerScreen(modifier: Modifier = Modifier) {
                         var elapsedTime = 0L
 
                         while (elapsedTime < animationDurationMillis) {
-                            displayedRoll = (1..6).random() // Show a random intermediate value
+                            displayedRoll = (1..selectedDie.sides).random()
                             delay(changeIntervalMillis)
                             elapsedTime += changeIntervalMillis
                         }
@@ -177,7 +213,7 @@ fun DiceRollerScreen(modifier: Modifier = Modifier) {
                         displayedRoll = actualRoll // Set the final actual roll
                         isRolling = false
 
-                        val rollData = DiceRollData(roll = actualRoll)
+                        val rollData = DiceRollData(roll = actualRoll, dieType = selectedDie.acronym)
                         diceRollsRef.push().setValue(rollData)
                             .addOnSuccessListener {
                                 Log.d("Firebase", "Roll data sent successfully")
