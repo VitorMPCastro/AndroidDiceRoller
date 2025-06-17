@@ -28,4 +28,6 @@
     <string name="title_activity_dice_roller_app">DiceRollerApp</string>
     <string name="roll_button_text">Roll</string>
     <string name="rolling_button_text">Rolling...</string>
+    <string name="roll_history_header">Roll History</string>
+    <string name="no_roll_history">No rolls recorded yet.</string>
 </resources>
