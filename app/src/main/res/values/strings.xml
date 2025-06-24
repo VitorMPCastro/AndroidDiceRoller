@@ -31,4 +31,14 @@
     <string name="roll_history_header">Roll History</string>
     <string name="no_roll_history">No rolls recorded yet.</string>
     <string name="select_die_label">Select die:</string>
+    <string name="create_custom_die_title">Create Custom Die</string>
+    <string name="navigate_back_content_description">Create new die</string>
+    <string name="create_die_instructions">Create die instructions</string>
+    <string name="die_acronym_label">Die Acronym</string>
+    <string name="die_acronym_placeholder">placeholder</string>
+    <string name="number_of_sides_label">Number of Sides</string>
+    <string name="number_of_sides_placeholder">placeholder</string>
+    <string name="die_created_success">Die $dieAcronym created!</string>
+    <string name="failed_to_create_die">Failed to add new die</string>
+    <string name="save_die_button">Save new die</string>
 </resources>

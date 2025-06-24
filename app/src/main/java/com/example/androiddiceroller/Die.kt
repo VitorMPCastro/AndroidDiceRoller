@@ -5,7 +5,7 @@ package com.example.androiddiceroller // Or your appropriate package
  * @property sides The number of sides on the die.
  * @property acronym A short string representation (e.g., "d20", "d6").
  */
-data class Die(val sides: Int, val acronym: String) {
+data class Die(val sides: Int, val acronym: String, val isCustom: Boolean = false) {
     init {
         require(sides > 0) { "A die must have at least 1 side." }
     }

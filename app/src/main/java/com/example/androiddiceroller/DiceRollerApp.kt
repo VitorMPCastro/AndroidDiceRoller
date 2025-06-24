@@ -1,5 +1,6 @@
-package com.example.androiddiceroller // Ensure this matches your package name
+package com.example.androiddiceroller
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -56,19 +57,23 @@ class DiceRollerApp : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AndroidDiceRollerTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    DiceRollerScreen()
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    AppNavHost()
                 }
             }
         }
     }
 }
 
+object ScreenRoutes {
+    const val MULTI_DICE_ROLL = "multi_dice_roller_screen"
+    const val DICE_ROLLER = "dice_roller_screen"
+    const val CREATE_DIE = "create_die_screen"
+    const val MANAGE_DICE = "manage_dice_screen"
+}
+
 class DiceViewModel(private val diceRollManager: DiceRollManager = DiceRollManager()) : ViewModel() {
-    val availableDice: List<Die> = diceRollManager.standardDiceTypes
+    val availableDice: StateFlow<List<Die>> = diceRollManager.availableDice
     val selectedDie: StateFlow<Die> = diceRollManager.selectedDie
 
     fun selectDie(die: Die) {
@@ -77,6 +82,30 @@ class DiceViewModel(private val diceRollManager: DiceRollManager = DiceRollManag
 
     fun rollCurrentDie(): Int {
         return diceRollManager.rollCurrentDie()
+    }
+
+    fun addCustomDie(sides: String, acronym: String): Boolean {
+        val numSides = sides.toIntOrNull()
+        if (numSides == null || numSides <= 0) {
+            Log.w("DiceViewModel", "Invalid number of sides: $sides")
+            return false
+        }
+        if (acronym.isBlank()) {
+            Log.w("DiceViewModel", "Acronym cannot be blank.")
+            return false
+        }
+        // The actual addition and validation logic is in DiceRollManager
+        val success = diceRollManager.addCustomDie(numSides, acronym)
+        if (success) {
+            Log.d("DiceViewModel", "Custom die $acronym ($numSides sides) added successfully via manager.")
+        } else {
+            Log.d("DiceViewModel", "Failed to add custom die $acronym via manager.")
+        }
+        return success
+    }
+
+    fun removeDie(die: Die) {
+        diceRollManager.removeDie(die)
     }
 }
 
@@ -89,10 +118,14 @@ data class DiceRollData(
     constructor() : this(null, 0, "", 0)
 }
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun DiceRollerScreen(
     modifier: Modifier = Modifier,
-    diceViewModel: DiceViewModel = remember { DiceViewModel() }
+    diceViewModel: DiceViewModel = remember { DiceViewModel() },
+    onCreateDie: () -> Unit = {},
+    onManageDice: () -> Unit = {},
+    switchToScreenMultiDiceRoller: () -> Unit = {}
 ) {
     // State to hold the current displayed dice value
     var displayedRoll by remember { mutableStateOf(1) }
@@ -155,6 +188,11 @@ fun DiceRollerScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+
+        Button(onClick = switchToScreenMultiDiceRoller) {
+            Text("Multi Dice Roller")
+        }
+
         Spacer(modifier = Modifier.weight(0.5f))
 
         Text(
@@ -171,7 +209,7 @@ fun DiceRollerScreen(
         ) {
             // Consider using FlowRow if you have many dice and want them to wrap
             // e.g., androidx.compose.foundation.layout.FlowRow
-            availableDice.forEach { die ->
+            availableDice.value.forEach { die ->
                 Button(
                     onClick = { diceViewModel.selectDie(die) },
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
@@ -183,6 +221,14 @@ fun DiceRollerScreen(
                 ) {
                     Text(text = die.acronym)
                 }
+            }
+
+            Button(onClick = onCreateDie, modifier = Modifier.padding(bottom = 16.dp)) {
+                Text("Create Custom Die")
+            }
+
+            Button(onClick = onManageDice, modifier = Modifier.padding(bottom = 16.dp)) {
+                Text("Manage Dice")
             }
         }
 
